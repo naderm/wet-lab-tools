@@ -59,14 +59,14 @@ def main(args):
       T, sig, error = read_cd_data(f)
       h, cp, tm = fit_cd_melt(T, sig, error)[:3]
 
-      print("  dH: {:.5}".format(h))
-      print("  Cp: {:.5}".format(cp))
-      print("  Tm: {:.5}".format(tm))
+      degree_sign= u'\N{DEGREE SIGN}'.encode("utf-8")
+      print("  dH: {:.5} kJ/mol".format(h))
+      print("  Cp: {:.5} J/mol/{}C".format(cp, degree_sign))
+      print("  Tm: {:.5} {}C".format(tm, degree_sign))
 
       dg_t = 25
       dg = gibbs_free_energy(h, cp, tm, dg_t)
-      degree_sign= u'\N{DEGREE SIGN}'.encode("utf-8")
-      print("  dG @ {}{}C: {:.5}".format(dg_t, degree_sign, dg))
+      print("  dG @ {}{}C: {:.5} kJ/mol".format(dg_t, degree_sign, dg))
 
 if __name__ == "__main__":
   main(sys.argv[1:])
