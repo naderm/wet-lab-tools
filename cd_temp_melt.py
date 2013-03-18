@@ -3,8 +3,9 @@
 from __future__ import division
 import sys
 from numpy import array, exp, log
+from scipy.odr.odrpack import Model, RealData, ODR
 # from pylab import *
-from scipy import optimize
+# from scipy import optimize
 
 def read_cd_data(cd_file):
   data = []
@@ -58,7 +59,6 @@ def fit_cd_melt(T, sig, error):
   # ss_tot = sum((sig - sig.mean()) ** 2)
   # res_var = 1 - ss_err / ss_tot
 
-  from scipy.odr.odrpack import Model, RealData, ODR
   linear = Model(fit_func_2)
   data = RealData(T, sig, sy = error)
   odr = ODR(data, linear, beta0 = guesses)
@@ -89,7 +89,7 @@ def main(args):
       dg_t = 25 + 273
       dg = gibbs_free_energy(h, cp, tm, dg_t) / 1000
       print("  {}G @ {} K: {:.5} kJ/mol".format(delta, dg_t, dg))
-      print("  residual variance: {:.3}".format(res_var))
+      print("  Residual variance: {:.3}".format(res_var))
 
 if __name__ == "__main__":
   main(sys.argv[1:])
