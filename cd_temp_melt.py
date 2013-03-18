@@ -89,7 +89,7 @@ def main(args, show_graph = True):
 
       if show_graph:
         temp = linspace(T.min(), T.max(), 100)
-        plot(T, sig, "ro", temp, _fit_func_2(p, temp), "k-")
+        plot(T, sig, "ro", temp, _expected_signal(p, temp), "k-")
         title("Temperature Melt of {}".format(arg))
         xlabel("Temperature (K)")
         ylabel("CD Signal (millidegrees)")
