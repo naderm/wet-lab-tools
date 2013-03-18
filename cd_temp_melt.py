@@ -8,6 +8,11 @@ from numpy import *
 from pylab import *
 
 def read_cd_data(cd_file):
+  """
+  Reads a file containing CD data as output by Aviv's software.
+
+  Returns an array of the temperatures, signals, and errors for the melt.
+  """
   data = []
 
   for line in cd_file:
