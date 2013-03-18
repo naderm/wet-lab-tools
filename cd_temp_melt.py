@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import division
+import os
 import sys
-from numpy import array, exp, log
 from scipy.odr.odrpack import Model, RealData, ODR
-# from pylab import *
+from numpy import *
+from pylab import *
 # from scipy import optimize
 
 def read_cd_data(cd_file):
@@ -29,7 +30,7 @@ def read_cd_data(cd_file):
 def gibbs_free_energy(h, cp, tm, t):
   return h * (1 - t / tm) - cp * ((tm - t) + t * log(t / tm))
 
-def fit_cd_melt(T, sig, error):
+def fit_cd_melt(T, sig, error, show_graph = True, name = "melt"):
   R = 8.314
   T += 273
 
@@ -59,10 +60,22 @@ def fit_cd_melt(T, sig, error):
   # ss_tot = sum((sig - sig.mean()) ** 2)
   # res_var = 1 - ss_err / ss_tot
 
+  # Instead of using least squares, use orthogonal distance regression. This
+  # lets us account for errors in the measurements of the data.
+  # See: http://docs.scipy.org/doc/scipy/reference/odr.html
   linear = Model(fit_func_2)
   data = RealData(T, sig, sy = error)
   odr = ODR(data, linear, beta0 = guesses)
   output = odr.run()
+
+  if show_graph:
+    temp = linspace(T.min(), T.max(), 100)
+    plot(T, sig, "ro", temp, fit_func_2(output.beta, temp), "r-")
+    title("Temperature melt of {}".format(name))
+    xlabel("Temperature (K)")
+    ylabel("CD Signal (millidegrees)")
+    show()
+    savefig("{}.png".format(os.path.splitext(name)[0]))
 
   return output.beta, output.sd_beta, output.res_var
   # return p, [0.] * len(p), res_var
@@ -73,7 +86,7 @@ def main(args):
 
     with open(arg) as cd_input:
       T, sig, error = read_cd_data(cd_input)
-      p, p_sd, res_var = fit_cd_melt(T, sig, error)
+      p, p_sd, res_var = fit_cd_melt(T, sig, error, name = arg)
       h, cp, tm = p[:3]
       h_sd, cp_sd, tm_sd = p_sd[:3]
 
