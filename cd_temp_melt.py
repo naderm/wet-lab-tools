@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import division
+import argparse
 import os
 import sys
 from scipy.odr.odrpack import Model, RealData, ODR
-from numpy import *
-from pylab import *
+from numpy import array, exp, log
+from pylab import plot, linspace, title, xlabel, ylabel, show, savefig
 
 def read_cd_data(cd_file):
   """
@@ -29,7 +30,7 @@ def read_cd_data(cd_file):
       continue
 
   data = array(data)
-  T = data[:,0] + 273
+  T = data[:,0] + 273.15
   signal = data[:,1]
   error = data[:,2]
   return T, signal, error
@@ -75,11 +76,23 @@ def fit_cd_melt(T, sig, error):
 
   return output.beta, output.sd_beta, output.res_var
 
-def main(args, show_graph = True):
-  for arg in args:
-    print("{}:".format(arg))
+def _create_parser():
+  parser = argparse.ArgumentParser(
+    description = "Process data for CD temperature melts")
+  parser.add_argument("file", nargs = "+",
+                      help = "File containing CD data")
+  parser.add_argument("--room_temp", type = float, default = 273.15 + 25,
+                      help = "Room temperature to use when calculating dG")
 
-    with open(arg) as cd_input:
+  return parser
+
+def main(args, show_graph = True):
+  parser = _create_parser()
+  args = parser.parse_args(args)
+  for f in args.file:
+    print("{}:".format(f))
+
+    with open(f) as cd_input:
       T, sig, error = read_cd_data(cd_input)
       p, p_sd, res_var = fit_cd_melt(T, sig, error)
       dH, C_p, T_m = p[:3]
@@ -94,7 +107,7 @@ def main(args, show_graph = True):
       print("  C_p: {:.6} +/- {:.4} J/mol/K".format(C_p, C_p_sd))
       print("  T_m: {:.6} +/- {:.4} K".format(T_m, T_m_sd))
 
-      dg_t = 25 + 273
+      dg_t = args.room_temp
       dg = _gibbs_free_energy(dH, C_p, T_m, dg_t) / 1000
       print("  {}G @ {} K: {:.5} kJ/mol".format(delta, dg_t, dg))
       print("  Residual variance: {:.3}".format(res_var))
@@ -102,11 +115,11 @@ def main(args, show_graph = True):
       if show_graph:
         temp = linspace(T.min(), T.max(), 100)
         plot(T, sig, "ro", temp, _expected_signal(p, temp), "k-")
-        title("Temperature Melt of {}".format(arg))
+        title("Temperature Melt of {}".format(f))
         xlabel("Temperature (K)")
         ylabel("CD Signal (millidegrees)")
         show()
-        savefig("{}.png".format(os.path.splitext(arg)[0]))
+        savefig("{}.png".format(os.path.splitext(f)[0]))
 
 if __name__ == "__main__":
   main(sys.argv[1:])
