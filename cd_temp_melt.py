@@ -29,22 +29,20 @@ def read_cd_data(cd_file):
   error = data[:,2]
   return T, signal, error
 
-def gibbs_free_energy(dH, C_p, T_m, t):
+def _gibbs_free_energy(dH, C_p, T_m, t):
   return dH * (1 - t / T_m) - C_p * ((T_m - t) + t * log(t / T_m))
 
-def k(dH, C_p, T_m, t):
+def _k(dH, C_p, T_m, t):
   R = 8.314
-  return exp(gibbs_free_energy(dH, C_p, T_m, t) / (R * t))
+  return exp(_gibbs_free_energy(dH, C_p, T_m, t) / (R * t))
 
-def alpha(dH, C_p, T_m, t):
-  k_calc = k(dH, C_p, T_m, t)
+def _alpha(dH, C_p, T_m, t):
+  k_calc = _k(dH, C_p, T_m, t)
   return k_calc / (1 + k_calc)
 
-def _fit_func(dH, C_p, T_m, sig_f, sig_u, t):
-  return alpha(dH, C_p, T_m, t) * (sig_f - sig_u) + sig_u
-
-def _fit_func_2(B, t):
-  return _fit_func(B[0], B[1], B[2], B[3], B[4], t)
+def _expected_signal(B, t):
+  dH, C_p, T_m, sig_f, sig_u = B
+  return _alpha(dH, C_p, T_m, t) * (sig_f - sig_u) + sig_u
 
 def fit_cd_melt(T, sig, error):
   # Set up the guesses for the sig_f, sig_u, and T_m, all easy to find
@@ -58,7 +56,7 @@ def fit_cd_melt(T, sig, error):
   # Instead of using least squares, use orthogonal distance regression. This
   # lets us account for errors in the measurements of the data.
   # See: http://docs.scipy.org/doc/scipy/reference/odr.html
-  linear = Model(_fit_func_2)
+  linear = Model(_expected_signal)
   data = RealData(T, sig, sy = error)
   odr = ODR(data, linear, beta0 = guesses)
   output = odr.run()
@@ -85,7 +83,7 @@ def main(args, show_graph = True):
       print("  T_m: {:.6} +/- {:.4} K".format(T_m, T_m_sd))
 
       dg_t = 25 + 273
-      dg = gibbs_free_energy(dH, C_p, T_m, dg_t) / 1000
+      dg = _gibbs_free_energy(dH, C_p, T_m, dg_t) / 1000
       print("  {}G @ {} K: {:.5} kJ/mol".format(delta, dg_t, dg))
       print("  Residual variance: {:.3}".format(res_var))
 
