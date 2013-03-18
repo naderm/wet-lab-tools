@@ -45,6 +45,13 @@ def _expected_signal(B, t):
   return _alpha(dH, C_p, T_m, t) * (sig_f - sig_u) + sig_u
 
 def fit_cd_melt(T, sig, error):
+  """
+  Estimate the dH, C_p, T_m, sig_f, and sig_u associated with a temperature
+  melt experiment. Uses scipy.odr to estimate error on the values.
+
+  Returns an array of the estimatations, an array of the standard deviations
+  associated with the estimates, and the residual variance of the fit.
+  """
   # Set up the guesses for the sig_f, sig_u, and T_m, all easy to find
   sig_f_guess, sig_u_guess = min(sig), max(sig)
   sig_mid = (sig_f_guess + sig_u_guess) / 2
