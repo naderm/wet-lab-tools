@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
 import sys
-from numpy import *
-from pylab import *
+from numpy import array, exp, log
 from scipy import optimize
 
 def read_cd_data(cd_file):
