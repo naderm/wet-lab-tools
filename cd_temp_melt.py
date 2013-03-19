@@ -5,7 +5,7 @@ import argparse
 import os
 import sys
 from scipy.odr.odrpack import Model, RealData, ODR
-from numpy import array, exp, log
+from numpy import array, exp, log, gradient
 from pylab import plot, linspace, title, xlabel, ylabel, show, savefig
 
 def read_cd_data(cd_file):
@@ -61,7 +61,7 @@ def fit_cd_melt(T, sig, error):
   # Set up the guesses for the sig_f, sig_u, and T_m, all easy to find
   sig_f_guess, sig_u_guess = min(sig), max(sig)
   sig_mid = (sig_f_guess + sig_u_guess) / 2
-  T_m_guess = min(enumerate(T), key = lambda x: abs(sig[x[0]] - sig_mid))[1]
+  T_m_guess = max(zip(T, gradient(T)), key = lambda x: x[1])[0]
   dH_guess = 0
   C_p_guess = 0
   guesses = [dH_guess, C_p_guess, T_m_guess, sig_f_guess, sig_u_guess]
