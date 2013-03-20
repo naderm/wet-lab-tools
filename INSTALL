@@ -1,0 +1,14 @@
+Within this directory:
+
+### If you have virtualenv installed:
+$ virtualenv .
+### Otherwise, install virtualenv locally
+$ VIRTUAL_ENV_VERSION=1.9.1
+$ curl https://pypi.python.org/packages/source/v/virtualenv/virtualenv-$VIRTUAL_ENV_VERSION.tar.gz | tar xvfz -
+$ python virtualenv-$VIRTUAL_ENV_VERSION/virtualenv.py .
+
+### Import all the virtualenv shell vars
+$ source bin/activate
+
+### Install dependencies
+$ pip install -r requirements.txt
