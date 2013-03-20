@@ -1,6 +1,9 @@
 *.py[cod]
 *.png
 *.txt
+virtualenv-*/
+include
+share
 
 # C extensions
 *.so
