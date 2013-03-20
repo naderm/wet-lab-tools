@@ -11,4 +11,6 @@ $ python virtualenv-$VIRTUAL_ENV_VERSION/virtualenv.py .
 $ source bin/activate
 
 ### Install dependencies
+# Note: numpy as a dependency is currently broken, so you may need to run the following first:
+$ pip install numpy
 $ pip install -r requirements.txt
