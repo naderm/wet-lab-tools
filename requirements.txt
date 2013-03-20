@@ -1,3 +1,4 @@
 biopython==1.61
+matplotlib==1.2.0
 numpy==1.7.0
 wsgiref==0.1.2
