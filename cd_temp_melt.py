@@ -9,117 +9,117 @@ from numpy import array, exp, log, gradient
 from pylab import plot, linspace, title, xlabel, ylabel, show, savefig
 
 def read_cd_data(cd_file):
-  """
-  Reads a file containing CD data as output by Aviv's software.
+    """
+    Reads a file containing CD data as output by Aviv's software.
 
-  Returns an array of the temperatures, signals, and errors for the melt.
-  """
-  data = []
+    Returns an array of the temperatures, signals, and errors for the melt.
+    """
+    data = []
 
-  for line in cd_file:
-    if "$" in line:
-      continue
+    for line in cd_file:
+        if "$" in line:
+            continue
 
-    cells = line.split()
-    if len(cells) != 5:
-      continue
+        cells = line.split()
+        if len(cells) != 5:
+            continue
 
-    try:
-      data += [float(i) for i in cells],
-    except ValueError:
-      continue
+        try:
+            data += [float(i) for i in cells],
+        except ValueError:
+            continue
 
-  data = array(data)
-  T = data[:,0] + 273.15
-  signal = data[:,1]
-  error = data[:,2]
-  return T, signal, error
+    data = array(data)
+    T = data[:,0] + 273.15
+    signal = data[:,1]
+    error = data[:,2]
+    return T, signal, error
 
 def _gibbs_free_energy(dH, C_p, T_m, t):
-  return dH * (1 - t / T_m) - C_p * ((T_m - t) + t * log(t / T_m))
+    return dH * (1 - t / T_m) - C_p * ((T_m - t) + t * log(t / T_m))
 
 def _k(dH, C_p, T_m, t):
-  R = 8.314
-  return exp(_gibbs_free_energy(dH, C_p, T_m, t) / (R * t))
+    R = 8.314
+    return exp(_gibbs_free_energy(dH, C_p, T_m, t) / (R * t))
 
 def _alpha(dH, C_p, T_m, t):
-  k_calc = _k(dH, C_p, T_m, t)
-  return k_calc / (1 + k_calc)
+    k_calc = _k(dH, C_p, T_m, t)
+    return k_calc / (1 + k_calc)
 
 def _expected_signal(B, t):
-  dH, C_p, T_m, sig_f, sig_u = B
-  return _alpha(dH, C_p, T_m, t) * (sig_f - sig_u) + sig_u
+    dH, C_p, T_m, sig_f, sig_u = B
+    return _alpha(dH, C_p, T_m, t) * (sig_f - sig_u) + sig_u
 
 def fit_cd_melt(T, sig, error):
-  """
-  Estimate the dH, C_p, T_m, sig_f, and sig_u associated with a temperature
-  melt experiment. Uses scipy.odr to estimate error on the values.
+    """
+    Estimate the dH, C_p, T_m, sig_f, and sig_u associated with a temperature
+    melt experiment. Uses scipy.odr to estimate error on the values.
 
-  Returns an array of the estimatations, an array of the standard deviations
-  associated with the estimates, and the residual variance of the fit.
-  """
-  # Set up the guesses for the sig_f, sig_u, and T_m, all easy to find
-  sig_f_guess, sig_u_guess = min(sig), max(sig)
-  sig_mid = (sig_f_guess + sig_u_guess) / 2
-  T_m_guess = max(zip(T, gradient(T)), key = lambda x: x[1])[0]
-  dH_guess = 0
-  C_p_guess = 0
-  guesses = [dH_guess, C_p_guess, T_m_guess, sig_f_guess, sig_u_guess]
+    Returns an array of the estimatations, an array of the standard deviations
+    associated with the estimates, and the residual variance of the fit.
+    """
+    # Set up the guesses for the sig_f, sig_u, and T_m, all easy to find
+    sig_f_guess, sig_u_guess = min(sig), max(sig)
+    sig_mid = (sig_f_guess + sig_u_guess) / 2
+    T_m_guess = max(zip(T, gradient(T)), key = lambda x: x[1])[0]
+    dH_guess = 0
+    C_p_guess = 0
+    guesses = [dH_guess, C_p_guess, T_m_guess, sig_f_guess, sig_u_guess]
 
-  # Instead of using least squares, use orthogonal distance regression. This
-  # lets us account for errors in the measurements of the data.
-  # See: http://docs.scipy.org/doc/scipy/reference/odr.html
-  linear = Model(_expected_signal)
-  data = RealData(T, sig, sy = error)
-  odr = ODR(data, linear, beta0 = guesses)
-  output = odr.run()
+    # Instead of using least squares, use orthogonal distance regression. This
+    # lets us account for errors in the measurements of the data.
+    # See: http://docs.scipy.org/doc/scipy/reference/odr.html
+    linear = Model(_expected_signal)
+    data = RealData(T, sig, sy = error)
+    odr = ODR(data, linear, beta0 = guesses)
+    output = odr.run()
 
-  return output.beta, output.sd_beta, output.res_var
+    return output.beta, output.sd_beta, output.res_var
 
 def _create_parser():
-  parser = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
     description = "Process data for CD temperature melts")
-  parser.add_argument("file", nargs = "+",
-                      help = "File containing CD data")
-  parser.add_argument("--room_temp", type = float, default = 273.15 + 25,
-                      help = "Room temperature to use when calculating dG")
+    parser.add_argument("file", nargs = "+",
+                        help = "File containing CD data")
+    parser.add_argument("--room_temp", type = float, default = 273.15 + 25,
+                        help = "Room temperature to use when calculating dG")
 
-  return parser
+    return parser
 
 def main(args, show_graph = True):
-  parser = _create_parser()
-  args = parser.parse_args(args)
-  for f in args.file:
-    print("{}:".format(f))
+    parser = _create_parser()
+    args = parser.parse_args(args)
+    for f in args.file:
+        print("{}:".format(f))
 
-    with open(f) as cd_input:
-      T, sig, error = read_cd_data(cd_input)
-      p, p_sd, res_var = fit_cd_melt(T, sig, error)
-      dH, C_p, T_m = p[:3]
-      dH_sd, C_p_sd, T_m_sd = p_sd[:3]
+        with open(f) as cd_input:
+            T, sig, error = read_cd_data(cd_input)
+            p, p_sd, res_var = fit_cd_melt(T, sig, error)
+            dH, C_p, T_m = p[:3]
+            dH_sd, C_p_sd, T_m_sd = p_sd[:3]
 
-      # Covert the enthalpy from J/mol to kJ/mol
-      dH, dH_sd = dH / 1000, dH_sd / 1000
+            # Covert the enthalpy from J/mol to kJ/mol
+            dH, dH_sd = dH / 1000, dH_sd / 1000
 
-      delta = u"\N{GREEK CAPITAL LETTER DELTA}".encode("utf-8")
+            delta = u"\N{GREEK CAPITAL LETTER DELTA}".encode("utf-8")
 
-      print("  {}H: {:.6} +/- {:.4} kJ/mol".format(delta, dH, dH_sd))
-      print("  C_p: {:.6} +/- {:.4} J/mol/K".format(C_p, C_p_sd))
-      print("  T_m: {:.6} +/- {:.4} K".format(T_m, T_m_sd))
+            print("  {}H: {:.6} +/- {:.4} kJ/mol".format(delta, dH, dH_sd))
+            print("  C_p: {:.6} +/- {:.4} J/mol/K".format(C_p, C_p_sd))
+            print("  T_m: {:.6} +/- {:.4} K".format(T_m, T_m_sd))
 
-      dg_t = args.room_temp
-      dg = _gibbs_free_energy(dH, C_p, T_m, dg_t) / 1000
-      print("  {}G @ {} K: {:.5} kJ/mol".format(delta, dg_t, dg))
-      print("  Residual variance: {:.3}".format(res_var))
+            dg_t = args.room_temp
+            dg = _gibbs_free_energy(dH, C_p, T_m, dg_t) / 1000
+            print("  {}G @ {} K: {:.5} kJ/mol".format(delta, dg_t, dg))
+            print("  Residual variance: {:.3}".format(res_var))
 
-      if show_graph:
-        temp = linspace(T.min(), T.max(), 100)
-        plot(T, sig, "ro", temp, _expected_signal(p, temp), "k-")
-        title("Temperature Melt of {}".format(f))
-        xlabel("Temperature (K)")
-        ylabel("CD Signal (millidegrees)")
-        show()
-        savefig("{}.png".format(os.path.splitext(f)[0]))
+            if show_graph:
+                temp = linspace(T.min(), T.max(), 100)
+                plot(T, sig, "ro", temp, _expected_signal(p, temp), "k-")
+                title("Temperature Melt of {}".format(f))
+                xlabel("Temperature (K)")
+                ylabel("CD Signal (millidegrees)")
+                show()
+                savefig("{}.png".format(os.path.splitext(f)[0]))
 
 if __name__ == "__main__":
-  main(sys.argv[1:])
+    main(sys.argv[1:])
