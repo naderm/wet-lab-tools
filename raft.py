@@ -41,11 +41,12 @@ def _raft_score(matrix, start, end):
 
 def _contact_matrix(structure):
     residues = _get_residues(structure)
-    contacts = np.zeros((len(residues), len(residues)), dtype = np.int)
+    n_res = len(residues)
+    contacts = np.zeros((n_res, n_res), dtype = np.int)
 
-    for index_a, res_a in enumerate(residues):
-        for index_b, res_b in enumerate(residues[index_a + 1:], start = index_a + 1):
-            if index_a != index_b and _is_contacting(res_a, res_b):
+    for index_a in xrange(n_res):
+        for index_b in xrange(index_a + 1, n_res):
+            if _is_contacting(residues[index_a], residues[index_b]):
                 contacts[index_a, index_b] = 1
 
     return contacts
