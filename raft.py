@@ -13,6 +13,7 @@ import os
 import sys
 from Bio.PDB import PDBParser
 from numpy.linalg import norm
+import numpy as np
 
 def _is_contacting(res_a, res_b, distance = 4):
     return any(norm(atom_a.get_coord() - atom_b.get_coord()) < distance
@@ -29,25 +30,38 @@ def _get_residues(structure):
             for chain in model.get_list()
             for residue in chain.get_list()]
 
-def _raft_score(residues, segment):
-    seg_residues = [i for i in residues if i.id[1] in segment]
-    other_residues = [i for i in residues if i.id[1] not in segment]
+def _raft_score(matrix, start, end):
+    intra_contacts = matrix[start:end, start:end].sum()
+    inter_contacts = matrix[start:end, 0:start].sum() + \
+      matrix[end:, start:end].sum()
 
-    intra_contacts = _get_num_contacts(seg_residues, seg_residues)
-    inter_contacts = _get_num_contacts(seg_residues, other_residues)
-
-    val = (intra_contacts - inter_contacts) / len(segment)
+    val = (intra_contacts - inter_contacts) / (end - start)
 
     return val
 
-def _raft_scores(structure):
+def _contact_matrix(structure):
     residues = _get_residues(structure)
-    start = min(residues).id[1]
-    end = max(residues).id[1]
+    contacts = np.zeros((len(residues), len(residues)), dtype = np.int)
 
-    return [[_raft_score(residues, range(i, j))
-             for j in range(i + 2, end + 1)]
-             for i in range(start, end - 2)]
+    for index_a, res_a in enumerate(residues):
+        for index_b, res_b in enumerate(residues[index_a + 1:], start = index_a + 1):
+            if index_a != index_b and _is_contacting(res_a, res_b):
+                contacts[index_a, index_b] = 1
+
+    return contacts
+
+def _raft_scores(structure):
+    print "Building contact matrix"
+    matrix = _contact_matrix(structure)
+    print "Done"
+
+    scores = np.zeros(matrix.shape)
+
+    for index_a in range(matrix.shape[0]):
+        for index_b in range(index_a + 1, matrix.shape[1]):
+            scores[index_a, index_b] = _raft_score(matrix, index_a, index_b)
+
+    return scores
 
 def _create_parser():
     parser = argparse.ArgumentParser(
@@ -67,8 +81,9 @@ def main(args):
             p = PDBParser(PERMISSIVE = 1)
             structure_id = ""
             structure = p.get_structure(structure_id, pdb_input)
-            print structure
-            print _raft_scores(structure)
+            print "  struct", structure
+            scores = _raft_scores(structure)
+            print "  scores", scores
 
 if __name__ == "__main__":
     main(sys.argv[1:])
