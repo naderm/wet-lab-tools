@@ -1,6 +1,8 @@
 *.py[cod]
 *.png
 *.txt
+*.dat
+*.pdb
 virtualenv-*/
 include
 share
