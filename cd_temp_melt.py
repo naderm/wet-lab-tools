@@ -6,7 +6,7 @@ import os
 import sys
 from scipy.odr.odrpack import Model, RealData, ODR
 from numpy import array, exp, log, gradient
-from pylab import plot, linspace, title, xlabel, ylabel, show, savefig
+from pylab import errorbar, linspace, title, xlabel, ylabel, show, savefig
 
 def read_cd_data(cd_file):
     """
@@ -114,7 +114,8 @@ def main(args, show_graph = True):
 
             if show_graph:
                 temp = linspace(T.min(), T.max(), 100)
-                plot(T, sig, "ro", temp, _expected_signal(p, temp), "k-")
+                errorbar(T, sig, yerr = error, fmt = "ro")
+                errorbar(temp, _expected_signal(p, temp), fmt = "k-")
                 title("Temperature Melt of {}".format(f))
                 xlabel("Temperature (K)")
                 ylabel("CD Signal (millidegrees)")
