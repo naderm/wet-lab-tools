@@ -61,7 +61,6 @@ def fit_cd_melt(T, sig, error, odr = True):
     """
     # Set up the guesses for the sig_f, sig_u, and T_m, all easy to find
     sig_f_guess, sig_u_guess = min(sig), max(sig)
-    sig_mid = (sig_f_guess + sig_u_guess) / 2
     T_m_guess = max(zip(T, gradient(T)), key = lambda x: x[1])[0]
     dH_guess = 0
     C_p_guess = 0
