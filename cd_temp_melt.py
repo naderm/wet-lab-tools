@@ -7,6 +7,7 @@ import sys
 from scipy.odr.odrpack import Model, RealData, ODR
 from numpy import array, exp, log, gradient
 from pylab import errorbar, linspace, title, xlabel, ylabel, show, savefig
+from scipy import optimize
 
 def read_cd_data(cd_file):
     """
@@ -50,7 +51,7 @@ def _expected_signal(B, t):
     dH, C_p, T_m, sig_f, sig_u = B
     return _alpha(dH, C_p, T_m, t) * (sig_f - sig_u) + sig_u
 
-def fit_cd_melt(T, sig, error):
+def fit_cd_melt(T, sig, error, odr = True):
     """
     Estimate the dH, C_p, T_m, sig_f, and sig_u associated with a temperature
     melt experiment. Uses scipy.odr to estimate error on the values.
@@ -66,21 +67,31 @@ def fit_cd_melt(T, sig, error):
     C_p_guess = 0
     guesses = [dH_guess, C_p_guess, T_m_guess, sig_f_guess, sig_u_guess]
 
-    # Instead of using least squares, use orthogonal distance regression. This
-    # lets us account for errors in the measurements of the data.
-    # See: http://docs.scipy.org/doc/scipy/reference/odr.html
-    linear = Model(_expected_signal)
-    data = RealData(T, sig, sy = error)
-    odr = ODR(data, linear, beta0 = guesses)
-    output = odr.run()
+    if odr:
+        # Instead of using least squares, use orthogonal distance regression.
+        # This allows us to account for errors in the measurements of the data.
+        # See: http://docs.scipy.org/doc/scipy/reference/odr.html
+        linear = Model(_expected_signal)
+        data = RealData(T, sig, sy = error)
+        odr = ODR(data, linear, beta0 = guesses)
+        output = odr.run()
+        output.pprint()
+        return output.beta, output.sd_beta, output.res_var
+    else:
+        def err_func(p, t, signal):
+            return _expected_signal(p, t) - signal
 
-    return output.beta, output.sd_beta, output.res_var
+        p2 = optimize.leastsq(err_func, guesses[:], args = (T, sig))
+        return p2[0], [None] * len(p2[0]), p2[1]
 
 def _create_parser():
     parser = argparse.ArgumentParser(
     description = "Process data for CD temperature melts")
     parser.add_argument("file", nargs = "+",
                         help = "File containing CD data")
+    parser.add_argument("-o", "--odr", action = "store_true",
+                        help = "Use ODRs to calculate the fit, giving error "
+                        "estimates")
     parser.add_argument("--room_temp", type = float, default = 273.15 + 25,
                         help = "Room temperature to use when calculating dG")
 
@@ -94,23 +105,29 @@ def main(args, show_graph = True):
 
         with open(f) as cd_input:
             T, sig, error = read_cd_data(cd_input)
-            p, p_sd, res_var = fit_cd_melt(T, sig, error)
+            p, p_sd, res_var = fit_cd_melt(T, sig, error, odr = args.odr)
             dH, C_p, T_m = p[:3]
             dH_sd, C_p_sd, T_m_sd = p_sd[:3]
 
             # Covert the enthalpy from J/mol to kJ/mol
-            dH, dH_sd = dH / 1000, dH_sd / 1000
+            dH /= 1000
+
+            if dH_sd is not None:
+                dH_sd /= 1000
 
             delta = u"\N{GREEK CAPITAL LETTER DELTA}".encode("utf-8")
 
-            print("  {}H: {:.6} +/- {:.4} kJ/mol".format(delta, dH, dH_sd))
-            print("  C_p: {:.6} +/- {:.4} J/mol/K".format(C_p, C_p_sd))
-            print("  T_m: {:.6} +/- {:.4} K".format(T_m, T_m_sd))
+            print(("  {}H: {:.6}" + (" +/- {:.4}" if dH_sd is not None else "")
+                   + " kJ/mol").format(delta, dH, dH_sd))
+            print(("  C_p: {:.6}" + (" +/- {:.4}" if C_p_sd is not None else "")
+                   + " J/mol/K").format(C_p, C_p_sd))
+            print(("  T_m: {:.6}" + (" +/- {:.4}" if T_m_sd is not None else "")
+                   + " K").format(T_m, T_m_sd))
 
             dg_t = args.room_temp
             dg = _gibbs_free_energy(dH, C_p, T_m, dg_t) / 1000
             print("  {}G @ {} K: {:.5} kJ/mol".format(delta, dg_t, dg))
-            print("  Residual variance: {:.3}".format(res_var))
+            print("  Residual variance: {}".format(res_var))
 
             if show_graph:
                 temp = linspace(T.min(), T.max(), 100)
