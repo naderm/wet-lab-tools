@@ -75,7 +75,6 @@ def fit_cd_melt(T, sig, error, odr = True):
         data = RealData(T, sig, sy = error)
         odr = ODR(data, linear, beta0 = guesses)
         output = odr.run()
-        output.pprint()
         return output.beta, output.sd_beta, output.res_var
     else:
         def err_func(p, t, signal):
